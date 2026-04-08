@@ -20,5 +20,9 @@ ENV API_BASE_URL=""
 ENV MODEL_NAME=""
 ENV HF_TOKEN=""
 
+# Install uv and dependencies
+RUN pip install uv
+RUN uv pip install --system -e .
+
 # Start the FastAPI server
-CMD ["python3", "server.py"]
+CMD ["server"]
