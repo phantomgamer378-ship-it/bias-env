@@ -1,0 +1,33 @@
+{
+  "name": "BiasEnv",
+  "version": "1.0.0",
+  "type": "environment",
+  "framework": "openenv",
+  "sdk": "docker",
+  "entrypoint": "server.py",
+  "port": 7860,
+  "files": [
+    "actions.py",
+    "dataset.py",
+    "environment.py",
+    "grader.py",
+    "rubric.py",
+    "inference.py",
+    "server.py",
+    "requirements.txt",
+    "Dockerfile",
+    "README.md",
+    "openenv.yaml"
+  ],
+  "endpoints": {
+    "health": "/health",
+    "reset": "/reset",
+    "step": "/step",
+    "state": "/state"
+  },
+  "environment": {
+    "action_space": "BiasAction",
+    "observation_space": "BiasObservation",
+    "max_steps": 10
+  }
+}
