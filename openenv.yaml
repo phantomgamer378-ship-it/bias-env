@@ -1,0 +1,43 @@
+name: BiasEnv
+version: 1.0.0
+description: RL Environment for Bias Detection
+author: phany00
+sdk: docker
+
+environment:
+  type: text
+  action_space:
+    - label: str
+    - severity: int
+    - corrected_text: str
+    - explanation: str
+  observation_space:
+    - text: str
+    - step_number: int
+    - total_steps: int
+    - reward: float
+    - cumulative_reward: float
+    - feedback: str
+    - done: bool
+    - info: dict
+
+episodes:
+  max_steps: 10
+  reward_range: [-1.0, 1.0]
+
+files:
+  - environment.py
+  - actions.py
+  - dataset.py
+  - grader.py
+  - rubric.py
+  - inference.py
+  - requirements.txt
+  - Dockerfile
+  - README.md
+
+endpoints:
+  reset: POST /reset
+  step: POST /step
+  state: GET /state
+  health: GET /health
