@@ -12,17 +12,16 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# HF Spaces runs on port 7860 — mandatory
+# Install package
+RUN pip install -e .
+
+# HF Spaces runs on port 7860
 EXPOSE 7860
 
-# Environment variables (values injected by HF Spaces secrets)
+# Environment variables
 ENV API_BASE_URL=""
 ENV MODEL_NAME=""
 ENV HF_TOKEN=""
 
-# Install uv and dependencies
-RUN pip install uv
-RUN uv pip install --system -e .
-
-# Start the FastAPI server
-CMD ["server"]
+# Start server using entry point
+CMD ["python3", "-m", "uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860"]
