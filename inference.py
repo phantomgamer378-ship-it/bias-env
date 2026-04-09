@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""
-Inference script for BiasEnv - MANDATORY for hackathon submission.
-
-Runs an agent through one full episode via HTTP API.
-"""
+"""Inference script for BiasEnv with validator output format."""
 
 import os
 import asyncio
@@ -14,7 +10,6 @@ from typing import Optional
 import httpx
 
 
-# Configuration
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:7860")
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
@@ -85,7 +80,6 @@ async def call_llm(prompt: str) -> str:
                 return result.get("generated_text", "")
             return str(result)
         except Exception as e:
-            print(f"LLM API error (using fallback): {e}")
             return rule_based_response(prompt)
 
 
@@ -107,7 +101,6 @@ def parse_llm_response(response_text: str, original_text: str) -> dict:
             "explanation": data.get("explanation", "parse error")
         }
     except Exception as e:
-        print(f"Parse error: {e}")
         return {
             "label": "no_bias",
             "severity": 0,
@@ -117,27 +110,22 @@ def parse_llm_response(response_text: str, original_text: str) -> dict:
 
 
 async def run_inference(base_url: str = "http://localhost:7860") -> float:
-    """Run one full episode via HTTP API."""
-    print(f"Connecting to BiasEnv at {base_url}...")
-    
+    """Run one full episode via HTTP API with validator output format."""
     async with httpx.AsyncClient() as client:
         try:
-            # Health check
-            health = await client.get(f"{base_url}/health", timeout=10.0)
-            print(f"Health: {health.json()}")
-            
             # Reset to start episode
             reset_resp = await client.post(f"{base_url}/reset", timeout=10.0)
             obs = reset_resp.json()
-            print(f"✅ Episode started. Analyzing {obs.get('total_steps', 10)} text snippets...\n")
+            
+            # Print START marker
+            print("[START] task=BiasEnv", flush=True)
             
             step_count = 0
+            total_reward = 0.0
             
             while not obs.get('done', False):
                 step_count += 1
-                print(f"--- Step {step_count}/{obs.get('total_steps', 10)} ---")
                 text = obs.get('text', '')
-                print(f"Text: {text[:80]}...")
                 
                 # Build prompt and call LLM
                 prompt = build_prompt(text, obs.get('feedback', ''))
@@ -146,31 +134,24 @@ async def run_inference(base_url: str = "http://localhost:7860") -> float:
                 # Parse response into action
                 action = parse_llm_response(llm_response, text)
                 
-                print(f"Action: {action['label']}, Severity: {action['severity']}")
-                print(f"Correction: {action['corrected_text'][:60]}...")
-                
                 # Take step via API
                 step_resp = await client.post(f"{base_url}/step", json=action, timeout=10.0)
                 obs = step_resp.json()
                 
-                print(f"Reward: {obs.get('reward', 0):.2f}")
-                print(f"Feedback: {obs.get('feedback', '')[:100]}...\n")
+                reward = obs.get('reward', 0)
+                total_reward += reward
+                
+                # Print STEP marker
+                print(f"[STEP] step={step_count} reward={reward:.2f}", flush=True)
             
-            # Episode complete
-            total_reward = obs.get('cumulative_reward', 0)
-            print("=" * 50)
-            print("EPISODE COMPLETE")
-            print("=" * 50)
-            print(f"Total Reward: {total_reward:.2f}")
-            print(f"Steps Completed: {step_count}")
-            print("=" * 50)
+            # Episode complete - print END marker
+            avg_reward = total_reward / step_count if step_count > 0 else 0
+            print(f"[END] task=BiasEnv score={avg_reward:.2f} steps={step_count}", flush=True)
             
-            return total_reward
+            return avg_reward
             
         except Exception as e:
-            print(f"Error during inference: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"[END] task=BiasEnv score=0.00 steps=0", flush=True)
             return 0.0
 
 
@@ -181,8 +162,7 @@ if __name__ == "__main__":
     
     try:
         final_reward = asyncio.run(run_inference(base_url))
-        # Always exit 0 on success
         sys.exit(0)
     except Exception as e:
-        print(f"Fatal error: {e}")
-        sys.exit(0)  # Exit 0 even on error for validator
+        print(f"[END] task=BiasEnv score=0.00 steps=0", flush=True)
+        sys.exit(0)
